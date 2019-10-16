@@ -1,0 +1,85 @@
+- name: Compile all projects
+  hosts: localhost
+  tasks:
+    - name: Compile JS frontend into static files
+      command: chdir=./../ta-frontend/html npm run generate
+
+    - name: Compile web server
+      command: chdir=./../ta-frontend go build main.go
+    
+    - name: Compile echo system
+      command: chdir=./../ta-echo-system go build main.go
+    
+    - name: Compile search app
+      command: chdir=./../ta-search-app go build main.go
+
+- name: Launching Echo app and Search app
+  hosts: ta_worker
+  tasks: 
+    # - name: Creates echo system directory
+    #   file:
+    #     path: ~/echo-system
+    #     state: directory
+
+    # - name: Creates search app directory
+    #   file:
+    #     path: ~/search-app
+    #     state: directory
+
+    - name: Creates aws directory
+      file:
+        path: ~/.aws
+        state: directory
+
+    - name: Copy echo system
+      copy:
+        src: ./../ta-echo-system/main
+        dest: ~/echo-system
+        owner: ubuntu
+        mode: '0755'
+
+    - name: Copy search app
+      copy:
+        src: ./../ta-search-app/main
+        dest: ~/search-app
+        owner: ubuntu
+        mode: '0755'
+
+    - name: Copy aws credentials and config
+      copy:
+        src:  ~/.aws/
+        dest: ~/.aws/
+        owner: ubuntu
+        mode: '0755'
+
+    - name: Launch echo system
+      shell: nohup ./echo-system </dev/null >/dev/null 2>&1 &
+
+    - name: Launch search app
+      shell: nohup ./search-app </dev/null >/dev/null 2>&1 &
+
+- name: Launching web server
+  hosts: ta_web_server
+  tasks:
+    - name: Create html directory
+      file:
+        path: ~/html
+        state: directory
+
+    - name: Copy web server app
+      copy:
+        src: ./../ta-frontend/main
+        dest: ~/frontend
+        owner: ubuntu
+        mode: '0755'
+
+    - name: Copy static files
+      copy:
+        src: ./../ta-frontend/html/dist/
+        dest: ~/html
+        owner: ubuntu
+        mode: '0755'
+
+    - name: Launch web server
+      shell: sudo nohup ./frontend </dev/null >/dev/null 2>&1 &
+
